@@ -3,7 +3,7 @@ Travel Booking — FULL LangChain v1 Implementation
 All 6 features with CORRECT imports for LangChain v1 / LangGraph:
   1. LCEL Chains              — prompt | llm | parser  (langchain_core)
   2. Memory                   — InMemoryChatMessageHistory + RunnableWithMessageHistory
-  3. Tools / Tool-calling     — TavilySearchResults (langchain_community)
+  3. Tools / Tool-calling     — DuckDuckGo + Wikipedia (FREE, no key)
   4. RAG / Vector store       — FAISS (langchain_community)
   5. ReAct Agent              — create_react_agent (langgraph.prebuilt)
   6. Streaming                — chain.stream() token by token
@@ -25,7 +25,10 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # Tools
-from langchain_community.tools.tavily_search import TavilySearchResults
+# Free tools — no API key needed
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_community.tools import WikipediaQueryRun
+from langchain_community.utilities import WikipediaAPIWrapper
 
 # Vector store
 from langchain_community.vectorstores import FAISS
@@ -77,12 +80,17 @@ def build_chain_with_memory(llm, system_prompt: str, phase_key: str):
 
 
 # ══════════════════════════════════════════════════════════════════
-# FEATURE 3 — Tools (Tavily search)
+# FEATURE 3 — Tools (DuckDuckGo + Wikipedia — FREE)
 # ══════════════════════════════════════════════════════════════════
 
-def get_search_tool(tavily_key: str):
-    os.environ["TAVILY_API_KEY"] = tavily_key
-    return TavilySearchResults(max_results=4)
+def get_free_tools():
+    """Returns DuckDuckGo + Wikipedia — both 100% free, no API key required"""
+    ddg = DuckDuckGoSearchRun(name="web_search")
+    wiki = WikipediaQueryRun(
+        name="wikipedia",
+        api_wrapper=WikipediaAPIWrapper(top_k_results=2, doc_content_chars_max=1000)
+    )
+    return [ddg, wiki]
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -175,9 +183,9 @@ Produce:
 # PUBLIC PHASE FUNCTIONS
 # ══════════════════════════════════════════════════════════════════
 
-def run_research_task(api_key, tavily_key, destination, origin,
+def run_research_task(api_key, destination, origin,
                       travel_dates, duration, travelers, budget, preferences) -> str:
-    """FEATURE 3+5: ReAct Agent with Tavily — live web search + autonomous reasoning
+    """FEATURE 3+5: ReAct Agent with DuckDuckGo + Wikipedia — free, no API key
        FEATURE 4: Result stored in FAISS for later retrieval"""
     os.environ["OPENAI_API_KEY"] = api_key
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3, openai_api_key=api_key)
@@ -188,17 +196,9 @@ def run_research_task(api_key, tavily_key, destination, origin,
              f"Search for current flights, hotels (3 price tiers), top activities, "
              f"local cuisine, visa info, and weather. Provide realistic USD prices.")
 
-    if tavily_key and tavily_key.strip():
-        tools = [get_search_tool(tavily_key)]
-        research_text = run_react_research(llm, tools, query)
-    else:
-        # Fallback: plain LCEL chain (no search)
-        FALLBACK_SYSTEM = """You are a Senior Travel Researcher with deep destination knowledge.
-Provide detailed research with sections: Flights, Accommodation (3 tiers),
-Top Activities, Local Cuisine, Budget Breakdown (USD), Weather, Travel Tips."""
-        chain = build_chain_with_memory(llm, FALLBACK_SYSTEM, "research")
-        research_text = stream_with_memory(chain, query, "research")
-        return research_text
+    # FEATURE 3+5: Always uses free tools — DuckDuckGo + Wikipedia
+    tools = get_free_tools()
+    research_text = run_react_research(llm, tools, query)
 
     # FEATURE 4: Store in FAISS
     store_in_vector(research_text, {
@@ -207,7 +207,7 @@ Top Activities, Local Cuisine, Budget Breakdown (USD), Weather, Travel Tips."""
     return research_text
 
 
-def run_planning_task(api_key, tavily_key, research_output, destination,
+def run_planning_task(api_key, research_output, destination,
                       duration, travelers, human_feedback, preferences) -> str:
     """FEATURE 1: LCEL Chain | FEATURE 2: Memory | FEATURE 4: RAG | FEATURE 6: Streaming"""
     os.environ["OPENAI_API_KEY"] = api_key
@@ -239,7 +239,7 @@ Human feedback to incorporate:
     return result
 
 
-def run_booking_task(api_key, tavily_key, itinerary_output, destination,
+def run_booking_task(api_key, itinerary_output, destination,
                      origin, travel_dates, travelers, budget, human_feedback) -> str:
     """FEATURE 1: LCEL Chain | FEATURE 2: Memory | FEATURE 4: RAG | FEATURE 6: Streaming"""
     os.environ["OPENAI_API_KEY"] = api_key
