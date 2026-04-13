@@ -2,17 +2,16 @@
 Travel Booking Crew - CrewAI Agents with Human-in-the-Loop
 """
 
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import SerperDevTool
-from langchain_openai import ChatOpenAI
 import os
 
 
 def get_llm(api_key: str):
-    return ChatOpenAI(
+    os.environ["OPENAI_API_KEY"] = api_key
+    return LLM(
         model="gpt-4o-mini",
         temperature=0.3,
-        openai_api_key=api_key
     )
 
 
