@@ -6,3 +6,4 @@ langgraph==1.1.6
 faiss-cpu==1.13.2
 streamlit>=1.41.1,<2.0.0
 ddgs>=1.0.0
+wikipedia
