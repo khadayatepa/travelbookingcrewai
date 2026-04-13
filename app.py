@@ -55,31 +55,22 @@ for k, v in {"phase":0,"research_output":"","plan_output":"",
 with st.sidebar:
     st.markdown("### 🔑 API Keys")
     api_key = st.text_input("OpenAI API Key", type="password", placeholder="sk-...")
-    tavily_key = st.text_input(
-        "Tavily Search API Key",
-        type="password",
-        placeholder="tvly-... (optional)",
-        help="Get free key at tavily.com — enables live web search for real prices"
-    )
-    if tavily_key:
-        st.success("✅ Live search enabled — Research Agent will use real data")
-    else:
-        st.info("💡 Without Tavily key, Research Agent uses GPT knowledge only")
+    st.success("✅ Live search: DuckDuckGo + Wikipedia (free, no key needed)")
 
     st.markdown("---")
     st.markdown("### 🦜 LangChain Features Active")
     features = [
         ("🔗", "LCEL Chains", "Planner + Coordinator"),
         ("🧠", "Memory", "Each agent remembers context"),
-        ("🔍", "Tavily Tool", "Research Agent searches live"),
+        ("🔍", "DuckDuckGo + Wiki", "Free search, no key needed"),
         ("📚", "RAG / FAISS", "Vector retrieval between agents"),
         ("🤖", "ReAct Agent", "Research reasons + acts"),
         ("⚡", "Streaming", "Token-by-token output"),
     ]
     for icon, name, desc in features:
         active = True
-        if name == "Tavily Tool" and not tavily_key:
-            active = False
+        if False:  # all tools always active
+            pass
         color = "#f0fff4" if active else "#f7fafc"
         border = "#9ae6b4" if active else "#e2e8f0"
         badge = "✅" if active else "⬜"
@@ -158,10 +149,7 @@ if st.session_state.phase == 0:
         height=90,
     )
 
-    if tavily_key:
-        st.info("🔍 **ReAct Agent active** — will autonomously search for real flights, hotel prices, and activities on the web before answering.")
-    else:
-        st.warning("⚠️ Add a Tavily API key in the sidebar to enable live web search. Get a free key at [tavily.com](https://tavily.com)")
+    st.info("🔍 **ReAct Agent** — uses DuckDuckGo + Wikipedia to search for real travel info. No API key needed.")
 
     st.markdown("---")
     _, col_btn, _ = st.columns([1, 2, 1])
@@ -191,26 +179,17 @@ elif st.session_state.phase == 1:
     if not st.session_state.research_output:
         st.markdown(f"## 🔍 Research Agent: {td['origin']} → {td['destination']}")
 
-        if tavily_key:
-            st.markdown("""
+        st.markdown("""
             <div style="background:#ebf8ff;border:1px solid #90cdf4;border-radius:8px;padding:1rem;margin-bottom:1rem">
                 <strong style="color:#2b6cb0">🤖 ReAct Agent running</strong><br>
                 <span style="font-size:.85rem;color:#2c5282">
-                Autonomously deciding what to search → executing searches → reasoning → combining results.
-                This may take 30-90 seconds.</span>
-            </div>""", unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div style="background:#fefcbf;border:1px solid #f6e05e;border-radius:8px;padding:1rem;margin-bottom:1rem">
-                <strong style="color:#744210">💡 LCEL Chain running</strong><br>
-                <span style="font-size:.85rem;color:#7b6608">Using GPT knowledge (no live search). Add Tavily key for real prices.</span>
+                Searching DuckDuckGo + Wikipedia → reasoning → combining results. May take 30-60 seconds.</span>
             </div>""", unsafe_allow_html=True)
 
         with st.spinner("🔍 Research Agent working..."):
             try:
                 result = run_research_task(
                     api_key=api_key,
-                    tavily_key=tavily_key or "",
                     **td
                 )
                 st.session_state.research_output = result
@@ -232,7 +211,7 @@ elif st.session_state.phase == 1:
 
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown('<span class="agent-badge badge-researcher">🔍 Research Agent — ReAct + Tavily</span>', unsafe_allow_html=True)
+            st.markdown('<span class="agent-badge badge-researcher">🔍 Research Agent — ReAct + DuckDuckGo + Wikipedia</span>', unsafe_allow_html=True)
             st.markdown(f'<div class="output-box">{st.session_state.research_output}</div>', unsafe_allow_html=True)
         with col2:
             st.markdown("### ✏️ Your Feedback")
@@ -268,7 +247,6 @@ elif st.session_state.phase == 2:
         try:
             result = run_planning_task(
                 api_key=api_key,
-                tavily_key=tavily_key or "",
                 research_output=st.session_state.research_output,
                 destination=td["destination"],
                 duration=td["duration"],
@@ -337,7 +315,6 @@ elif st.session_state.phase == 3:
         try:
             result = run_booking_task(
                 api_key=api_key,
-                tavily_key=tavily_key or "",
                 itinerary_output=st.session_state.plan_output,
                 destination=td["destination"],
                 origin=td["origin"],
@@ -393,7 +370,7 @@ elif st.session_state.phase == 3:
 {td['travelers']} traveler(s) | {td['budget']}
 Preferences: {td['preferences']}
 
-LangChain features used: LCEL Chains, Memory, Tools (Tavily),
+LangChain features used: LCEL Chains, Memory, Tools (DuckDuckGo+Wikipedia),
 RAG (FAISS), ReAct Agent, Streaming
 
 {'='*60}
@@ -431,6 +408,6 @@ BOOKING ACTION PLAN (LCEL + Memory + RAG)
 # ── Footer ─────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown("""<div style="text-align:center;color:#a0aec0;font-size:.8rem;padding:.5rem">
-    🦜 <strong>LangChain</strong> LCEL &bull; Memory &bull; Tools &bull; RAG &bull; ReAct &bull; Streaming
+    🦜 <strong>LangChain</strong> LCEL &bull; Memory &bull; DuckDuckGo+Wiki Tools &bull; RAG &bull; ReAct &bull; Streaming
     &nbsp;+&nbsp; 👤 <strong>Human-in-the-Loop</strong> &nbsp;+&nbsp; 🎈 <strong>Streamlit</strong>
 </div>""", unsafe_allow_html=True)
